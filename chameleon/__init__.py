@@ -1,19 +1,21 @@
-import asyncore
 import smtpd
 import socket
 from numbers import Integral
 from typing import Tuple
 
+from chameleon.decoder import MailDecoder
+from config import HOST, PORT
+
 
 class Chameleon(smtpd.SMTPServer):
-    def __init__(self, host, port):
+    def __init__(self, host=HOST, port=PORT):
         super().__init__(
             (host, port),
             remoteaddr=None,
             data_size_limit=smtpd.DATA_SIZE_DEFAULT,
             map=None,
             enable_SMTPUTF8=False,
-            decode_data=True
+            decode_data=False
         )
 
     def handle_accepted(self, conn: socket.socket, addr: Tuple[str, Integral]):
@@ -26,13 +28,20 @@ class Chameleon(smtpd.SMTPServer):
         :param rcpttos: 来自报文封装包的收件人列表.同样地，它也不总是和 To 标题相符，尤其是收件人被盲目抄袭时
         :param data: 完整的 RFC 5322 报文正文
         """
-        print('Receiving message from:', type(peer), peer)
-        print('Message addressed from:', type(mailfrom), mailfrom)
-        print('Message addressed to  :', type(rcpttos), rcpttos)
-        print('Message length        :', type(data), len(data), data)
 
+        # content:
 
-if __name__ == '__main__':
-    server = Chameleon('127.0.0.1', 1025)
-    print("server run at 127.0.0.1:1025")
-    asyncore.loop()
+        # Content-Type: text/plain; charset="utf-8"
+        # MIME-Version: 1.0
+        # Content-Transfer-Encoding: base64
+        # To: Sender <tester@example.com>
+        # From: Receiver <ltoddy@example.com>
+        # Subject: =?utf-8?b?dGVzdCDmoIfpopg=?=
+        #
+        # SnVzdCBmb3IgdGVzdCDmtYvor5Xpgq7ku7blhoXlrrk=
+
+        # TODO: sender: 发送人只有一个, receivers: 接收者可以有多个
+        # self.sender = mailfrom
+        # self.receivers = rcpttos
+
+        decoder = MailDecoder(data)
